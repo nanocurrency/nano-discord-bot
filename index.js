@@ -54,9 +54,14 @@ client.on('message', msg => {
             if (!msg.mentions.members) return;
             let addRolePromises = [];
             for (let member of msg.mentions.members.array()) {
-                if (member.roles.some(r => config.modRoles.includes(r.name))) {
-                    // ignore mods
-                    continue;
+                if (!config.testing) {
+                    // don't mute mods or bots
+                    if (member.user.id === client.user.id) {
+                        return;
+                    }
+                    if (member.roles.some(r => config.modRoles.includes(r.name))) {
+                        continue;
+                    }
                 }
                 addRolePromises.push(member.addRole(sinbinRole)
                     .then(() => [member, false])
@@ -105,14 +110,13 @@ client.on('message', msg => {
             if (!msg.mentions.members) return;
             let removeRolePromises = [];
             for (let member of msg.mentions.members.array()) {
-                removeRolePromises.push(member.addRole(sinbinRole)
+                removeRolePromises.push(member.removeRole(sinbinRole)
                     .then(() => [member, false])
                     .catch(err => {
                         console.error(err);
                         return [member, true];
                     }));
                 let permanentId = msg.guild.id + ' ' + member.user.id;
-                member.removeRole(sinbinRole);
                 if (muted[permanentId] !== undefined) {
                     const mutedInfo = muted[permanentId];
                     clearTimeout(mutedInfo.timeout);
