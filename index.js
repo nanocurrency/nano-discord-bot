@@ -38,7 +38,7 @@ client.on('message', msg => {
             const sinBinRole = msg.guild.roles.find('name', 'SinBin');
             if (!sinBinRole) return;
             if (!msg.mentions.members) return;
-            for (let member of msg.mentions.members) {
+            for (let member of msg.mentions.members.array()) {
                 let permanentId = msg.guild.id + member.user.id;
                 if (muted[permanentId] !== undefined) {
                     const mutedInfo = muted[permanentId];
