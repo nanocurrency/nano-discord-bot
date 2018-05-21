@@ -40,9 +40,9 @@ client.on('message', msg => {
             if (!msg.mentions.members) return;
             for (let member of msg.mentions.members.array()) {
                 let permanentId = msg.guild.id + member.user.id;
+                member.removeRole(sinBinRole);
                 if (muted[permanentId] !== undefined) {
                     const mutedInfo = muted[permanentId];
-                    member.removeRole(sinBinRole);
                     let permanentId = msg.guild.id + member.user.id;
                     clearTimeout(mutedInfo.timeout);
                     delete muted[permanentId];
