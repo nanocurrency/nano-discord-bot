@@ -21,8 +21,14 @@ client.on('message', msg => {
             if (!duration || duration <= 0) return;
             duration = duration * 60 * 1000;
             if (!msg.mentions.members) return;
+            let addRolePromises = [];
             for (let member of msg.mentions.members.array()) {
-                member.addRole(sinBinRole);
+                addRolePromises.push(member.addRole(sinBinRole)
+                    .then(() => [member, false])
+                    .catch(err => {
+                        console.error(err);
+                        return [member, true];
+                    }));
                 // member.id might change if the user leaves then re-joins
                 let permanentId = msg.guild.id + member.user.id;
                 if (muted[permanentId] !== undefined) {
@@ -34,11 +40,37 @@ client.on('message', msg => {
                     endsAt: Date.now() + duration,
                 };
             }
+            Promise.all(addRolePromises).then(results => {
+                if (!results.length) return;
+                const successful = results.filter(x => !x[1]).map(x => x[0]);
+                const errored = results.filter(x => x[1]).map(x => x[0]);
+                let message = '';
+                if (successful.length) {
+                    message += 'Muted ';
+                    message += successful.map(x => '<@' + x.id + '>').join(', ');
+                    message += ' for ' + parts[1] + ' minute(s). ';
+                }
+                if (errored.length) {
+                    message += 'Failed to mute ';
+                    message += errored.map(x => '<@' + x.id + '>').join(', ');
+                    message += '. <@' + config.ownerId + '> check logs and investigate.';
+                }
+                if (message.length) {
+                    msg.channel.send(message);
+                }
+            });
         } else if (parts[0] === '!unmute') {
             const sinBinRole = msg.guild.roles.find('name', 'Sinbin');
             if (!sinBinRole) return;
             if (!msg.mentions.members) return;
+            let removeRolePromises = [];
             for (let member of msg.mentions.members.array()) {
+                removeRolePromises.push(member.addRole(sinBinRole)
+                    .then(() => [member, false])
+                    .catch(err => {
+                        console.error(err);
+                        return [member, true];
+                    }));
                 let permanentId = msg.guild.id + member.user.id;
                 member.removeRole(sinBinRole);
                 if (muted[permanentId] !== undefined) {
@@ -47,6 +79,25 @@ client.on('message', msg => {
                     delete muted[permanentId];
                 }
             }
+            Promise.all(removeRolePromises).then(results => {
+                if (!results.length) return;
+                const successful = results.filter(x => !x[1]).map(x => x[0]);
+                const errored = results.filter(x => x[1]).map(x => x[0]);
+                let message = '';
+                if (successful.length) {
+                    message += 'Unmuted ';
+                    message += successful.map(x => '<@' + x.id + '>').join(', ');
+                    message += '. ';
+                }
+                if (errored.length) {
+                    message += 'Failed to unmute ';
+                    message += errored.map(x => '<@' + x.id + '>').join(', ');
+                    message += '. <@' + config.ownerId + '> check logs and investigate.';
+                }
+                if (message.length) {
+                    msg.channel.send(message);
+                }
+            });
         }
     } catch (err) {
         console.error(err);
