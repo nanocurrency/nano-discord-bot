@@ -43,7 +43,6 @@ client.on('message', msg => {
                 member.removeRole(sinBinRole);
                 if (muted[permanentId] !== undefined) {
                     const mutedInfo = muted[permanentId];
-                    let permanentId = msg.guild.id + member.user.id;
                     clearTimeout(mutedInfo.timeout);
                     delete muted[permanentId];
                 }
