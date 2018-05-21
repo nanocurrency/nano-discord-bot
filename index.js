@@ -16,7 +16,7 @@ client.on('message', msg => {
         const parts = msg.content.split(' ');
         if (parts[0] === '!mute' && parts[1]) {
             let duration = parseFloat(parts[1]);
-            const sinBinRole = msg.guild.roles.find('name', 'SinBin');
+            const sinBinRole = msg.guild.roles.find('name', 'Sinbin');
             if (!sinBinRole) return;
             if (!duration || duration <= 0) return;
             duration = duration * 60 * 1000;
@@ -35,7 +35,7 @@ client.on('message', msg => {
                 };
             }
         } else if (parts[0] === '!unmute') {
-            const sinBinRole = msg.guild.roles.find('name', 'SinBin');
+            const sinBinRole = msg.guild.roles.find('name', 'Sinbin');
             if (!sinBinRole) return;
             if (!msg.mentions.members) return;
             for (let member of msg.mentions.members.array()) {
