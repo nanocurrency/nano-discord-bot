@@ -1,0 +1,14 @@
+{
+  "name": "nano-discord-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "discord.js": "^11.3.2"
+  },
+  "optionalDependencies": {
+    "erlpack": "github:hammerandchisel/erlpack",
+    "uws": "^10.148.0"
+  }
+}
