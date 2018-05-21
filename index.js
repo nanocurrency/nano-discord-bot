@@ -37,7 +37,7 @@ client.on('message', msg => {
         } else if (parts[0] === '!unmute') {
             const sinBinRole = msg.guild.roles.find('name', 'SinBin');
             if (!sinBinRole) return;
-            if (!msg.mentions.mentions) return;
+            if (!msg.mentions.members) return;
             for (let member of msg.mentions.members) {
                 let permanentId = msg.guild.id + member.user.id;
                 if (muted[permanentId] !== undefined) {
