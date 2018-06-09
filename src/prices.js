@@ -10,7 +10,8 @@ module.exports.cmc = async function() {
         btc: (+json.data.quotes.BTC.price).toFixed(8),
         usd: (+json.data.quotes.USD.price).toFixed(2),
         btcusd: Math.round(json.data.quotes.USD.price / json.data.quotes.BTC.price).toLocaleString(), // it works :P
-        volume: json.data.quotes.USD.volume_24h.toLocaleString(),
+        volume: Math.round(json.data.quotes.USD.volume_24h).toLocaleString(),
+        market_cap: Math.round(json.data.quotes.USD.market_cap).toLocaleString(),
         percent_change_1h: json.data.quotes.USD.percent_change_1h
     };
 };

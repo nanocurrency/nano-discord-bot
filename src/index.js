@@ -63,8 +63,7 @@ client.on('message', async msg => {
             }
             const [cmc, ...exchanges] = await Promise.all([await prices.cmc(), ...Object.keys(prices.exchanges).map(x => prices.exchanges[x]())]);
             const embed = {};
-            //embed.title = 'CoinMarketCap data';
-            embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\n24h volume: $${cmc.volume} USD\n1 BTC = $${cmc.btcusd} USD`;
+            embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\nMarket cap: $${cmc.market_cap} USD\n24h volume: $${cmc.volume} USD\n1 BTC = $${cmc.btcusd} USD`;
             if (cmc.percent_change_1h < 0) {
                 embed.color = 0xed2939; // imperial red
             } else if (cmc.percent_change_1h > 0) {
