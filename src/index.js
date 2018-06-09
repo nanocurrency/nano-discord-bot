@@ -2,7 +2,9 @@ const fs = require('fs');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
-const config = require('./config.json');
+const prices = require('./prices.js');
+
+const config = require('../config.json');
 
 let muted = {};
 
@@ -19,6 +21,7 @@ let mutedWriteScheduled = false;
 function saveMuted() {
     if (mutedWriting) {
         mutedWriteScheduled = true;
+        return;
     }
     mutedWriting = true;
     const mutedJson = {};
@@ -38,14 +41,48 @@ function saveMuted() {
 }
 saveMuted();
 
-client.on('message', msg => {
+const priceBackoff = {};
+
+client.on('message', async msg => {
     try {
-        if (!msg.guild || !msg.guild.available || !msg.member) return;
-        if (!msg.member.roles.some(r => config.modRoles.includes(r.name))) {
-            return;
-        }
+        let isMod = msg.guild && msg.guild.available && msg.member &&
+            msg.member.roles.some(r => config.modRoles.includes(r.name));
         const parts = msg.content.split(' ');
-        if (parts[0] === '!mute' && parts[1]) {
+        if (parts[0] === '!price') {
+            if (msg.channel.guild) {
+                if (msg.channel.name !== 'general') {
+                    return;
+                }
+                if (!config.testing) {
+                    if (priceBackoff[msg.channel.id]) {
+                        return;
+                    }
+                    priceBackoff[msg.channel.id] = true;
+                    setTimeout(() => priceBackoff[msg.channel.id] = false, (config.priceBackoff || 60) * 1000);
+                }
+            }
+            const [cmc, ...exchanges] = await Promise.all([await prices.cmc(), ...Object.keys(prices.exchanges).map(x => prices.exchanges[x]())]);
+            const embed = {};
+            //embed.title = 'CoinMarketCap data';
+            embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\n24h volume: $${cmc.volume} USD\n1 BTC = $${cmc.btcusd} USD`;
+            if (cmc.percent_change_1h < 0) {
+                embed.color = 0xed2939; // imperial red
+            } else if (cmc.percent_change_1h > 0) {
+                embed.color = 0x39ff14; // neon green
+            }
+            embed.fields = [];
+            for (let exchange of exchanges) {
+                embed.fields.push({
+                    name: exchange.name,
+                    value: exchange.price + ' BTC',
+                    inline: true
+                });
+            }
+            await msg.channel.send(new Discord.RichEmbed(embed));
+        } else if (parts[0] === '!mute' && parts[1]) {
+            if (!isMod) {
+                return;
+            }
             let duration = parseFloat(parts[1]);
             const sinbinRole = msg.guild.roles.find('name', config.sinbinRole);
             if (!sinbinRole) return;
@@ -85,26 +122,28 @@ client.on('message', msg => {
                 };
             }
             saveMuted();
-            Promise.all(addRolePromises).then(results => {
-                if (!results.length) return;
-                const successful = results.filter(x => !x[1]).map(x => x[0]);
-                const errored = results.filter(x => x[1]).map(x => x[0]);
-                let message = '';
-                if (successful.length) {
-                    message += 'Muted ';
-                    message += successful.map(x => '<@' + x.id + '>').join(', ');
-                    message += ' for ' + parts[1] + ' minute(s). ';
-                }
-                if (errored.length) {
-                    message += 'Failed to mute ';
-                    message += errored.map(x => '<@' + x.id + '>').join(', ');
-                    message += '. <@' + config.ownerId + '> check logs and investigate.';
-                }
-                if (message.length) {
-                    msg.channel.send(message);
-                }
-            });
+            const results = await Promise.all(addRolePromises);
+            if (!results.length) return;
+            const successful = results.filter(x => !x[1]).map(x => x[0]);
+            const errored = results.filter(x => x[1]).map(x => x[0]);
+            let message = '';
+            if (successful.length) {
+                message += 'Muted ';
+                message += successful.map(x => '<@' + x.id + '>').join(', ');
+                message += ' for ' + parts[1] + ' minute(s). ';
+            }
+            if (errored.length) {
+                message += 'Failed to mute ';
+                message += errored.map(x => '<@' + x.id + '>').join(', ');
+                message += '. <@' + config.ownerId + '> check logs and investigate.';
+            }
+            if (message.length) {
+                msg.channel.send(message);
+            }
         } else if (parts[0] === '!unmute') {
+            if (!isMod) {
+                return;
+            }
             const sinbinRole = msg.guild.roles.find('name', config.sinbinRole);
             if (!sinbinRole) return;
             if (!msg.mentions.members) return;
@@ -124,25 +163,24 @@ client.on('message', msg => {
                 }
             }
             saveMuted();
-            Promise.all(removeRolePromises).then(results => {
-                if (!results.length) return;
-                const successful = results.filter(x => !x[1]).map(x => x[0]);
-                const errored = results.filter(x => x[1]).map(x => x[0]);
-                let message = '';
-                if (successful.length) {
-                    message += 'Unmuted ';
-                    message += successful.map(x => '<@' + x.id + '>').join(', ');
-                    message += '. ';
-                }
-                if (errored.length) {
-                    message += 'Failed to unmute ';
-                    message += errored.map(x => '<@' + x.id + '>').join(', ');
-                    message += '. <@' + config.ownerId + '> check logs and investigate.';
-                }
-                if (message.length) {
-                    msg.channel.send(message);
-                }
-            });
+            const results = await Promise.all(removeRolePromises);
+            if (!results.length) return;
+            const successful = results.filter(x => !x[1]).map(x => x[0]);
+            const errored = results.filter(x => x[1]).map(x => x[0]);
+            let message = '';
+            if (successful.length) {
+                message += 'Unmuted ';
+                message += successful.map(x => '<@' + x.id + '>').join(', ');
+                message += '. ';
+            }
+            if (errored.length) {
+                message += 'Failed to unmute ';
+                message += errored.map(x => '<@' + x.id + '>').join(', ');
+                message += '. <@' + config.ownerId + '> check logs and investigate.';
+            }
+            if (message.length) {
+                msg.channel.send(message);
+            }
         }
     } catch (err) {
         console.error(err);
