@@ -101,14 +101,13 @@ client.on('message', async msg => {
             } else if (cmc.percent_change_1h > 0) {
                 embed.color = 0x39ff14; // neon green
             }
-            embed.fields = [];
+            embed.description += '\n```';
+            const nameFieldLength = Math.max(...exchanges.map(x => x.name.length)) + 1;
             for (let exchange of exchanges) {
-                embed.fields.push({
-                    name: exchange.name,
-                    value: exchange.price + ' BTC',
-                    inline: true
-                });
+                const nameSpacing = ' '.repeat(nameFieldLength - exchange.name.length);
+                embed.description += `\n${exchange.name}:${nameSpacing}${exchange.price} BTC`;
             }
+            embed.description += '\n```';
             await msg.channel.send(new Discord.RichEmbed(embed));
         } else if (parts[0] === '!mute' && parts[1]) {
             if (!isMod) {
