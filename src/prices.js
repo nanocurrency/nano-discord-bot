@@ -12,6 +12,7 @@ module.exports.cmc = async function() {
         btcusd: Math.round(json.data.quotes.USD.price / json.data.quotes.BTC.price).toLocaleString(), // it works :P
         volume: Math.round(json.data.quotes.USD.volume_24h).toLocaleString(),
         market_cap: Math.round(json.data.quotes.USD.market_cap).toLocaleString(),
+        cap_rank: Math.round(json.data.rank).toLocaleString(),
         percent_change_1h: json.data.quotes.USD.percent_change_1h
     };
 };
