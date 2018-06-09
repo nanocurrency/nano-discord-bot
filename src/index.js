@@ -83,13 +83,13 @@ client.on('message', async msg => {
                 if (msg.channel.name !== 'general') {
                     return;
                 }
-                if (!config.testing) {
-                    if (priceBackoff[msg.channel.id]) {
-                        return;
-                    }
-                    priceBackoff[msg.channel.id] = true;
-                    setTimeout(() => priceBackoff[msg.channel.id] = false, (config.priceBackoff || 60) * 1000);
+            }
+            if (!config.testing) {
+                if (priceBackoff[msg.channel.id]) {
+                    return;
                 }
+                priceBackoff[msg.channel.id] = true;
+                setTimeout(() => priceBackoff[msg.channel.id] = false, (config.priceBackoff || 60) * 1000);
             }
             const [cmc, ...exchanges] = await Promise.all([await prices.cmc(), ...Object.keys(prices.exchanges).map(x => prices.exchanges[x]())]);
             const embed = {};
