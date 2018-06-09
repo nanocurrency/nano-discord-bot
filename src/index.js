@@ -41,8 +41,38 @@ function saveMuted() {
 }
 saveMuted();
 
-const priceBackoff = {};
+function modifyRole(role, users, addRole) {
+    let promises = [];
+    for (let member of users) {
+        if (!config.testing) {
+            // don't mute mods or bots
+            if (member.user.id === client.user.id) {
+                return;
+            }
+            if (member.roles.some(r => config.modRoles.includes(r.name))) {
+                continue;
+            }
+        }
+        let promise;
+        if (addRole) {
+            promise = member.addRole(role);
+        } else {
+            promise = member.removeRole(role);
+        }
+        promises.push(promise
+            .then(() => [member, false])
+            .catch(err => {
+                console.error(err);
+                return [member, true];
+            }));
+    }
+    return Promise.all(promises).then(arr => ({
+        successful: arr.filter(x => !x[1]).map(x => x[0]),
+        errored: arr.filter(x => x[1]).map(x => x[0])
+    }));
+}
 
+const priceBackoff = {};
 client.on('message', async msg => {
     try {
         let isMod = msg.guild && msg.guild.available && msg.member &&
@@ -88,23 +118,11 @@ client.on('message', async msg => {
             if (!duration || duration <= 0) return;
             duration = duration * 60 * 1000;
             if (!msg.mentions.members) return;
-            let addRolePromises = [];
-            for (let member of msg.mentions.members.array()) {
-                if (!config.testing) {
-                    // don't mute mods or bots
-                    if (member.user.id === client.user.id) {
-                        return;
-                    }
-                    if (member.roles.some(r => config.modRoles.includes(r.name))) {
-                        continue;
-                    }
-                }
-                addRolePromises.push(member.addRole(sinbinRole)
-                    .then(() => [member, false])
-                    .catch(err => {
-                        console.error(err);
-                        return [member, true];
-                    }));
+            const {successful, errored} = await modifyRole(sinbinRole, msg.mentions.members.array(), true);
+            if (!successful.length && !errored.length) {
+                return;
+            }
+            for (let member of successful) {
                 // member.id might change if the user leaves then re-joins
                 let permanentId = msg.guild.id + ' ' + member.user.id;
                 if (muted[permanentId] !== undefined) {
@@ -121,24 +139,22 @@ client.on('message', async msg => {
                 };
             }
             saveMuted();
-            const results = await Promise.all(addRolePromises);
-            if (!results.length) return;
-            const successful = results.filter(x => !x[1]).map(x => x[0]);
-            const errored = results.filter(x => x[1]).map(x => x[0]);
             let message = '';
             if (successful.length) {
                 message += 'Muted ';
                 message += successful.map(x => '<@' + x.id + '>').join(', ');
-                message += ' for ' + parts[1] + ' minute(s). ';
+                if (parseFloat(parts[1]) === 1) {
+                    message += ' for 1 minute.';
+                } else {
+                    message += ' for ' + parts[1] + ' minutes. ';
+                }
             }
             if (errored.length) {
                 message += 'Failed to mute ';
                 message += errored.map(x => '<@' + x.id + '>').join(', ');
                 message += '. <@' + config.ownerId + '> check logs and investigate.';
             }
-            if (message.length) {
-                msg.channel.send(message);
-            }
+            msg.channel.send(message);
         } else if (parts[0] === '!unmute') {
             if (!isMod) {
                 return;
@@ -146,14 +162,11 @@ client.on('message', async msg => {
             const sinbinRole = msg.guild.roles.find('name', config.sinbinRole);
             if (!sinbinRole) return;
             if (!msg.mentions.members) return;
-            let removeRolePromises = [];
-            for (let member of msg.mentions.members.array()) {
-                removeRolePromises.push(member.removeRole(sinbinRole)
-                    .then(() => [member, false])
-                    .catch(err => {
-                        console.error(err);
-                        return [member, true];
-                    }));
+            const {successful, errored} = await modifyRole(sinbinRole, msg.mentions.members.array(), false);
+            if (!successful.length && !errored.length) {
+                return;
+            }
+            for (let member of successful) {
                 let permanentId = msg.guild.id + ' ' + member.user.id;
                 if (muted[permanentId] !== undefined) {
                     const mutedInfo = muted[permanentId];
@@ -162,10 +175,6 @@ client.on('message', async msg => {
                 }
             }
             saveMuted();
-            const results = await Promise.all(removeRolePromises);
-            if (!results.length) return;
-            const successful = results.filter(x => !x[1]).map(x => x[0]);
-            const errored = results.filter(x => x[1]).map(x => x[0]);
             let message = '';
             if (successful.length) {
                 message += 'Unmuted ';
@@ -177,9 +186,51 @@ client.on('message', async msg => {
                 message += errored.map(x => '<@' + x.id + '>').join(', ');
                 message += '. <@' + config.ownerId + '> check logs and investigate.';
             }
-            if (message.length) {
-                msg.channel.send(message);
+            msg.channel.send(message);
+        } else if (parts[0] === '!disableserious') {
+            if (!isMod) {
+                return;
             }
+            const disableSeriousRole = msg.guild.roles.find('name', config.disableSeriousRole);
+            if (!disableSeriousRole || !msg.mentions.members) return;
+            const {successful, errored} = await modifyRole(disableSeriousRole, msg.mentions.members.array(), true);
+            if (!successful.length && !errored.length) {
+                return;
+            }
+            let message = '';
+            if (successful.length) {
+                message += 'Disabled serious for ';
+                message += successful.map(x => '<@' + x.id + '>').join(', ');
+                message += '.';
+            }
+            if (errored.length) {
+                message += 'Failed to disable serious for ';
+                message += errored.map(x => '<@' + x.id + '>').join(', ');
+                message += '. <@' + config.ownerId + '> check logs and investigate.';
+            }
+            msg.channel.send(message);
+        } else if (parts[0] === '!enableserious') {
+            if (!isMod) {
+                return;
+            }
+            const disableSeriousRole = msg.guild.roles.find('name', config.disableSeriousRole);
+            if (!disableSeriousRole || !msg.mentions.members) return;
+            const {successful, errored} = await modifyRole(disableSeriousRole, msg.mentions.members.array(), false);
+            if (!successful.length && !errored.length) {
+                return;
+            }
+            let message = '';
+            if (successful.length) {
+                message += 'Enabled serious for ';
+                message += successful.map(x => '<@' + x.id + '>').join(', ');
+                message += '.';
+            }
+            if (errored.length) {
+                message += 'Failed to enable serious for ';
+                message += errored.map(x => '<@' + x.id + '>').join(', ');
+                message += '. <@' + config.ownerId + '> check logs and investigate.';
+            }
+            msg.channel.send(message);
         }
     } catch (err) {
         console.error(err);
