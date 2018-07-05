@@ -1,4 +1,5 @@
 const fs = require('fs');
+const promiseTimeout = require('promise-timeout').timeout;
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
@@ -91,7 +92,14 @@ client.on('message', async msg => {
                 priceBackoff[msg.channel.id] = true;
                 setTimeout(() => priceBackoff[msg.channel.id] = false, (config.priceBackoff || 60) * 1000);
             }
-            const [cmc, ...exchanges] = await Promise.all([await prices.cmc(), ...Object.keys(prices.exchanges).map(x => prices.exchanges[x]())]);
+            const [cmc, ...exchanges] = await Promise.all([
+                await prices.cmc(),
+                ...Object.keys(prices.exchanges).map(x => 
+                    promiseTimeout(prices.exchanges[x](), config.exchangeApiTimeout || 2500)
+                        .catch(err => console.log('Exchange API error: ' + err))
+                        .then(price => [x, price])
+                )
+            ]);
             const embed = {};
             embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\n` +
                 `Market cap: $${cmc.market_cap} USD (#${cmc.cap_rank})\n` +
@@ -101,13 +109,17 @@ client.on('message', async msg => {
             } else if (cmc.percent_change_1h > 0) {
                 embed.color = 0x39ff14; // neon green
             }
-            embed.description += '\n```';
-            const nameFieldLength = Math.max(...exchanges.map(x => x.name.length)) + 1;
-            for (let exchange of exchanges) {
-                const nameSpacing = ' '.repeat(nameFieldLength - exchange.name.length);
-                embed.description += `\n${exchange.name}:${nameSpacing}${exchange.price} BTC`;
+            embed.description += '\n```\n';
+            const nameFieldLength = Math.max(...exchanges.map(x => x[0].length)) + 1;
+            for (let [name, price] of exchanges) {
+                const nameSpacing = ' '.repeat(nameFieldLength - name.length);
+                if (price) {
+                    embed.description += `${name}:${nameSpacing}${price} BTC\n`;
+                } else {
+                    embed.description += `${name}:${nameSpacing}API error\n`;
+                }
             }
-            embed.description += '\n```';
+            embed.description += '```';
             await msg.channel.send(new Discord.RichEmbed(embed));
         } else if (parts[0] === '!mute' && parts[1]) {
             if (!isMod) {

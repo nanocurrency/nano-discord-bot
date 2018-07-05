@@ -19,19 +19,16 @@ module.exports.cmc = async function() {
 
 module.exports.exchanges = {};
 
-module.exports.exchanges.binance = async function() {
+module.exports.exchanges.Binance = async function() {
     const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=NANOBTC');
     if (res.status !== 200) {
         throw new Error('Binance returned status code ' + res.status + '\n' + await res.text());
     }
     const json = await res.json();
-    return {
-        name: 'Binance',
-        price: (+json.price).toFixed(8)
-    };
+    return (+json.price).toFixed(8);
 };
 
-module.exports.exchanges.kucoin = async function() {
+module.exports.exchanges.KuCoin = async function() {
     const res = await fetch('https://api.kucoin.com/v1/open/tick?symbol=XRB-BTC');
     if (res.status !== 200) {
         throw new Error('Kucoin returned status code ' + res.status + '\n' + await res.text());
@@ -40,20 +37,14 @@ module.exports.exchanges.kucoin = async function() {
     if (!json.success) {
         throw new Error('Kucoin returned non-successful body: ' + JSON.stringify(json));
     }
-    return {
-        name: 'KuCoin',
-        price: (+json.data.lastDealPrice).toFixed(8)
-    };
+    return (+json.data.lastDealPrice).toFixed(8);
 };
 
-module.exports.exchanges.nanex = async function() {
+module.exports.exchanges.Nanex = async function() {
     const res = await fetch('https://nanex.co/api/public/ticker/btcnano');
     if (res.status !== 200) {
         throw new Error('Nanex returned status code ' + res.status + '\n' + await res.text());
     }
     const json = await res.json();
-    return {
-        name: 'Nanex',
-        price: (1 / json.last_trade).toFixed(8)
-    };
+    return (1 / json.last_trade).toFixed(8);
 };
