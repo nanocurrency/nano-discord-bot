@@ -29,7 +29,7 @@ module.exports.exchanges.Binance = async function() {
 };
 
 module.exports.exchanges.KuCoin = async function() {
-    const res = await fetch('https://api.kucoin.com/v1/open/tick?symbol=XRB-BTC');
+    const res = await fetch('https://api.kucoin.com/v1/open/tick?symbol=NANO-BTC');
     if (res.status !== 200) {
         throw new Error('Kucoin returned status code ' + res.status + '\n' + await res.text());
     }
