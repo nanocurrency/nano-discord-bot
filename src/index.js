@@ -161,7 +161,7 @@ client.on('message', async msg => {
                 } else {
                     message += ' for ' + parts[1] + ' minutes.';
                 }
-                message += ' Please follow the #rules.'
+                message += ' Please follow the <#' + config.rulesChannelId + '>.';
             }
             if (errored.length) {
                 message += 'Failed to mute ';
