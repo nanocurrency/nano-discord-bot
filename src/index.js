@@ -159,8 +159,9 @@ client.on('message', async msg => {
                 if (parseFloat(parts[1]) === 1) {
                     message += ' for 1 minute.';
                 } else {
-                    message += ' for ' + parts[1] + ' minutes. ';
+                    message += ' for ' + parts[1] + ' minutes.';
                 }
+                message += ' Please follow the #rules.'
             }
             if (errored.length) {
                 message += 'Failed to mute ';
