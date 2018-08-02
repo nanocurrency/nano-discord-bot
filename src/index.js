@@ -94,7 +94,7 @@ client.on('message', async msg => {
             }
             const [cmc, ...exchanges] = await Promise.all([
                 await prices.cmc(),
-                ...Object.keys(prices.exchanges).map(x => 
+                ...Object.keys(prices.exchanges).map(x =>
                     promiseTimeout(prices.exchanges[x](), config.exchangeApiTimeout || 2500)
                         .catch(err => console.log('Exchange API error: ' + err))
                         .then(price => [x, price])
@@ -248,6 +248,22 @@ client.on('message', async msg => {
         }
     } catch (err) {
         console.error(err);
+    }
+});
+
+client.on('userUpdate', (oldUser, newUser) => {
+    if (oldUser.username !== newUser.username) {
+        let message = '`' + oldUser.username + '` has changed their username to `' + newUser.username + '`: <@' + newUser.id + '>';
+        client.channels.get(config.nameChangeChannelId).send(message);
+    }
+});
+
+client.on('guildMemberUpdate', (oldMember, newMember) => {
+    let oldNick = oldMember.nickname || oldMember.user.username;
+    let newNick = newMember.nickname || newMember.user.username;
+    if (oldNick != newNick) {
+        let message = '`' + oldNick + '` has changed their nickname to `' + newNick + '`: <@' + newMember.user.id + '>';
+        client.channels.get(config.nameChangeChannelId).send(message);
     }
 });
 
