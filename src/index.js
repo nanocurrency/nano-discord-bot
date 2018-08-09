@@ -293,6 +293,24 @@ client.on('guildMemberAdd', member => {
     }
 });
 
+client.on('guildMemberAdd', member => {
+    try {
+        if (config.welcomeMessage && !member.user.bot) {
+            let message = 'Welcome <@' + member.user.id + '> to ' + member.guild.name;
+            if (config.welcomeMessage) {
+                message += ':\n' + config.welcomeMessage;
+            }
+            member.user.send(message);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+if (config.welcomeMessageFile) {
+    config.welcomeMessage = fs.readFileSync(config.welcomeMessageFile);
+}
+
 client.login(config.token).then(() => {
     try {
         const mutedToDelete = [];
