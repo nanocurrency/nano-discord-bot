@@ -73,55 +73,12 @@ function modifyRole(role, users, addRole) {
     }));
 }
 
-const priceBackoff = {};
 client.on('message', async msg => {
     try {
         let isMod = msg.guild && msg.guild.available && msg.member &&
             msg.member.roles.some(r => config.modRoles.includes(r.name));
         const parts = msg.content.split(' ');
-        if (parts[0] === '!price') {
-            if (msg.channel.guild) {
-                if (msg.channel.name !== 'general') {
-                    return;
-                }
-            }
-            if (!config.testing) {
-                if (priceBackoff[msg.channel.id]) {
-                    return;
-                }
-                priceBackoff[msg.channel.id] = true;
-                setTimeout(() => priceBackoff[msg.channel.id] = false, (config.priceBackoff || 60) * 1000);
-            }
-            const [cmc, ...exchanges] = await Promise.all([
-                await prices.cmc(),
-                ...Object.keys(prices.exchanges).map(x =>
-                    promiseTimeout(prices.exchanges[x](), config.exchangeApiTimeout || 2500)
-                        .catch(err => console.log('Exchange API error: ' + err))
-                        .then(price => [x, price])
-                )
-            ]);
-            const embed = {};
-            embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\n` +
-                `Market cap: $${cmc.market_cap} USD (#${cmc.cap_rank})\n` +
-                `24h volume: $${cmc.volume} USD\n1 BTC = $${cmc.btcusd} USD`;
-            if (cmc.percent_change_1h < 0) {
-                embed.color = 0xed2939; // imperial red
-            } else if (cmc.percent_change_1h > 0) {
-                embed.color = 0x39ff14; // neon green
-            }
-            embed.description += '\n```\n';
-            const nameFieldLength = Math.max(...exchanges.map(x => x[0].length)) + 1;
-            for (let [name, price] of exchanges) {
-                const nameSpacing = ' '.repeat(nameFieldLength - name.length);
-                if (price) {
-                    embed.description += `${name}:${nameSpacing}${price} BTC\n`;
-                } else {
-                    embed.description += `${name}:${nameSpacing}API error\n`;
-                }
-            }
-            embed.description += '```';
-            await msg.channel.send(new Discord.RichEmbed(embed));
-        } else if (parts[0] === '!mute' && parts[1]) {
+        if (parts[0] === '!mute' && parts[1]) {
             if (!isMod) {
                 return;
             }
@@ -250,6 +207,40 @@ client.on('message', async msg => {
         console.error(err);
     }
 });
+
+if (config.priceChannelId) {
+    setInterval(async () => {
+        const [cmc, ...exchanges] = await Promise.all([
+            await prices.cmc(),
+            ...Object.keys(prices.exchanges).map(x =>
+                promiseTimeout(prices.exchanges[x](), config.exchangeApiTimeout || 2500)
+                    .catch(err => console.log('Exchange API error: ' + err))
+                    .then(price => [x, price])
+            )
+        ]);
+        const embed = {};
+        embed.description = `**${cmc.btc} BTC - $${cmc.usd} USD**\n` +
+            `Market cap: $${cmc.market_cap} USD (#${cmc.cap_rank})\n` +
+            `24h volume: $${cmc.volume} USD\n1 BTC = $${cmc.btcusd} USD`;
+        if (cmc.percent_change_1h < 0) {
+            embed.color = 0xed2939; // imperial red
+        } else if (cmc.percent_change_1h > 0) {
+            embed.color = 0x39ff14; // neon green
+        }
+        embed.description += '\n```\n';
+        const nameFieldLength = Math.max(...exchanges.map(x => x[0].length)) + 1;
+        for (let [name, price] of exchanges) {
+            const nameSpacing = ' '.repeat(nameFieldLength - name.length);
+            if (price) {
+                embed.description += `${name}:${nameSpacing}${price} BTC\n`;
+            } else {
+                embed.description += `${name}:${nameSpacing}API error\n`;
+            }
+        }
+        embed.description += '```';
+        await client.channels.get(config.priceChannelId).send(new Discord.RichEmbed(embed));
+    }, config.priceInterval || 60000);
+}
 
 client.on('userUpdate', (oldUser, newUser) => {
     if (oldUser.username !== newUser.username) {
