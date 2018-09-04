@@ -50,6 +50,9 @@ function modifyRole(role, users, addRole) {
             if (member.user.id === client.user.id) {
                 return;
             }
+            if (member.user.bot) {
+                return;
+            }
             if (member.roles.some(r => config.modRoles.includes(r.name))) {
                 continue;
             }
@@ -158,46 +161,48 @@ client.on('message', async msg => {
                 message += '. <@' + config.ownerId + '> check logs and investigate.';
             }
             msg.channel.send(message);
-        } else if (parts[0] === '!disableserious') {
+        } else if (parts[0] === '!getroleid') {
             if (!isMod) {
                 return;
             }
-            const disableSeriousRole = msg.guild.roles.find('name', config.disableSeriousRole);
-            if (!disableSeriousRole || !msg.mentions.members) return;
-            const {successful, errored} = await modifyRole(disableSeriousRole, msg.mentions.members.array(), true);
+            const role = msg.guild.roles.find('name', parts.slice(1).join(' '));
+            if (role) {
+                msg.reply('role id: ' + role.id);
+            } else {
+                msg.reply('role not found');
+            }
+        } else if (parts[0].startsWith('!disable') || parts[0].startsWith('!enable')) {
+            if (!isMod) {
+                return;
+            }
+            let newRoleValue;
+            let roleName;
+            if (parts[0].startsWith('!enable')) {
+                newRoleValue = true;
+                roleName = parts[0].slice('!enable'.length) || parts[1];
+            } else if (parts[0].startsWith('!disable')) {
+                newRoleValue = false;
+                roleName = parts[0].slice('!disable'.length) || parts[1];
+            } else {
+                throw new Error('Error parsing mod role setting command');
+            }
+            const modConfiguredRoles = config.modConfiguredRoles || {};
+            if (!modConfiguredRoles.hasOwnProperty(roleName)) return;
+            const roleConf = modConfiguredRoles[roleName];
+            const role = msg.guild.roles.get(roleConf.id);
+            if (!role || !msg.mentions.members) return;
+            const {successful, errored} = await modifyRole(role, msg.mentions.members.array(), !!(newRoleValue ^ (!!roleConf.inverted)));
             if (!successful.length && !errored.length) {
                 return;
             }
             let message = '';
             if (successful.length) {
-                message += 'Disabled serious for ';
+                message += (newRoleValue ? 'Enabled ' : 'Disabled ') + (roleConf.name || roleName) + ' for ';
                 message += successful.map(x => '<@' + x.id + '>').join(', ');
                 message += '.';
             }
             if (errored.length) {
-                message += 'Failed to disable serious for ';
-                message += errored.map(x => '<@' + x.id + '>').join(', ');
-                message += '. <@' + config.ownerId + '> check logs and investigate.';
-            }
-            msg.channel.send(message);
-        } else if (parts[0] === '!enableserious') {
-            if (!isMod) {
-                return;
-            }
-            const disableSeriousRole = msg.guild.roles.find('name', config.disableSeriousRole);
-            if (!disableSeriousRole || !msg.mentions.members) return;
-            const {successful, errored} = await modifyRole(disableSeriousRole, msg.mentions.members.array(), false);
-            if (!successful.length && !errored.length) {
-                return;
-            }
-            let message = '';
-            if (successful.length) {
-                message += 'Enabled serious for ';
-                message += successful.map(x => '<@' + x.id + '>').join(', ');
-                message += '.';
-            }
-            if (errored.length) {
-                message += 'Failed to enable serious for ';
+                message += 'Failed to ' + (newRoleValue ? 'enable ' : 'disable ') + (roleConf.name || roleName) + ' for ';
                 message += errored.map(x => '<@' + x.id + '>').join(', ');
                 message += '. <@' + config.ownerId + '> check logs and investigate.';
             }
