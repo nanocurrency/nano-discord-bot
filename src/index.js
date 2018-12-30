@@ -76,16 +76,27 @@ function modifyRole(role, users, addRole) {
     }));
 }
 
+function parseFirstFloat(parts) {
+    for (let part of parts) {
+        if (!isNaN(part)) {
+            return parseFloat(part);
+        }
+    }
+}
+
 client.on('message', async msg => {
     try {
         let isMod = msg.guild && msg.guild.available && msg.member &&
             msg.member.roles.some(r => config.modRoles.includes(r.name));
         const parts = msg.content.split(' ');
-        if (parts[0] === '!mute' && parts[1]) {
+        if (parts[0] === '!mute') {
             if (!isMod) {
                 return;
             }
-            let duration = parseFloat(parts[1]);
+            let duration = parseFirstFloat(parts);
+            if (!duration) {
+                return;
+            }
             const sinbinRole = msg.guild.roles.find('name', config.sinbinRole);
             if (!sinbinRole) return;
             if (!duration || duration <= 0) return;
