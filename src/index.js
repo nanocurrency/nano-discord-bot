@@ -1,9 +1,7 @@
 const fs = require('fs');
 const promiseTimeout = require('promise-timeout').timeout;
 const Discord = require('discord.js');
-const client = new Discord.Client({
-    autoReconnect: true
-});
+const client = new Discord.Client();
 
 const prices = require('./prices.js');
 
