@@ -94,7 +94,7 @@ client.on('message', async msg => {
                 return;
             }
             const durationStr = findFirstNum(parts);
-            let duration = parseFloat(duration);
+            let duration = parseFloat(durationStr);
             if (!duration) {
                 return;
             }
