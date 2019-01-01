@@ -76,10 +76,10 @@ function modifyRole(role, users, addRole) {
     }));
 }
 
-function parseFirstFloat(parts) {
+function findFirstNum(parts) {
     for (let part of parts) {
         if (!isNaN(part)) {
-            return parseFloat(part);
+            return part;
         }
     }
 }
@@ -93,7 +93,8 @@ client.on('message', async msg => {
             if (!isMod) {
                 return;
             }
-            let duration = parseFirstFloat(parts);
+            const durationStr = findFirstNum(parts);
+            let duration = parseFloat(duration);
             if (!duration) {
                 return;
             }
@@ -130,7 +131,7 @@ client.on('message', async msg => {
                 if (parseFloat(parts[1]) === 1) {
                     message += ' for 1 minute.';
                 } else {
-                    message += ' for ' + parts[1] + ' minutes.';
+                    message += ' for ' + durationStr + ' minutes.';
                 }
                 message += ' Please follow the <#' + config.rulesChannelId + '>.';
             }
