@@ -349,3 +349,8 @@ client.login(config.token).then(() => {
         console.error(err);
     }
 });
+
+process.on('unhandledRejection', err => {
+    console.error('Unhandled promise rejection', err);
+    process.exit(1);
+});
